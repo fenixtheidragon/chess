@@ -14,6 +14,8 @@ public class Tile {
     private final Color color;
     private boolean occupied;
     private Piece occupyingPiece;
+    @Setter
+    private boolean attacked;
 
     public Tile(int letterCoordinate, int digitCoordinate, Color color) {
         this.letterCoordinate = letterCoordinate;
@@ -21,6 +23,7 @@ public class Tile {
         this.color = color;
         this.occupied = false;
         this.occupyingPiece = null;
+        this.attacked = false;
     }
 
     public void setOccupiedBy(Piece piece) {

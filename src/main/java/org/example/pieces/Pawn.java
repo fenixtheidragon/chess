@@ -95,12 +95,14 @@ public class Pawn extends Piece {
     }
 
     private void addTwoTileForwardMove(BoardState boardState) throws IllegalCoordinateException {
-        Tile tile = boardState.getTile(letterCoordinate, digitCoordinate + getDigitModifier() * 2);
-        if (firstMove && !tile.isOccupied()) {
-            if (isPawnPinnedToKingHorizontally(boardState)) {
-                return;
+        if (firstMove) {
+            Tile tile = boardState.getTile(letterCoordinate, digitCoordinate + getDigitModifier() * 2);
+            if (!tile.isOccupied()) {
+                if (isPawnPinnedToKingHorizontally(boardState)) {
+                    return;
+                }
+                potentialMoves.add(tile);
             }
-            potentialMoves.add(tile);
         }
     }
 
@@ -108,24 +110,20 @@ public class Pawn extends Piece {
         if (isPawnPinnedToKingHorizontally(boardState) || isPawnPinnedToKingVertically(boardState)) {
             return;
         }
+        if (letterCoordinate == 0) {
+            addEatingToTheRight(boardState);
+        } else if (letterCoordinate == 7) {
+            addEatingToTheLeft(boardState);
+        } else {
+            addEatingToTheLeft(boardState);
+            addEatingToTheRight(boardState);
+        }
+    }
+
+    private void addEatingToTheRight(BoardState boardState) throws IllegalCoordinateException {
         if (boardState.getTile(letterCoordinate + 1, digitCoordinate + getDigitModifier()).isOccupied()) {
             if (isPawnPinnedToKingDiagonally(boardState)) {
-                Tile kingTile = getKingTile(boardState);
-                int[] differenceBetweenPawnAndKing = boardState.getTiles().getDifferenceBetweenTiles(
-                        letterCoordinate, digitCoordinate,
-                        kingTile.getLetterCoordinate(), kingTile.getDigitCoordinate());
-                int[] differenceBetweenNewTileAndPawn = boardState.getTiles().getDifferenceBetweenTiles(
-                        letterCoordinate + 1, digitCoordinate + getDigitModifier(),
-                        letterCoordinate, digitCoordinate);
-                //диагональ слева снизу вправо вверх (для белых фигур)
-                if ((differenceBetweenPawnAndKing[0] < 0 && differenceBetweenNewTileAndPawn[0] < 0
-                        && differenceBetweenPawnAndKing[1] < 0 && differenceBetweenNewTileAndPawn[1] < 0
-                        && color == Color.WHITE)
-                        //диагональ слева сверху вправо вниз (для чёрных фигур)
-                        || (differenceBetweenPawnAndKing[0] < 0 && differenceBetweenNewTileAndPawn[0] < 0
-                        && differenceBetweenPawnAndKing[1] > 0 && differenceBetweenNewTileAndPawn[1] > 0
-                        && color == Color.BLACK)
-                ) {
+                if (isPawnPinnedToKingDiagonallyFromBottomLeftToTopRightOrFromTopLeftToBottomRight(boardState)) {
                     potentialMoves.add(boardState.getTile(
                             letterCoordinate + 1, digitCoordinate + getDigitModifier()));
                 }
@@ -134,24 +132,12 @@ public class Pawn extends Piece {
                         letterCoordinate + 1, digitCoordinate + getDigitModifier()));
             }
         }
+    }
+
+    private void addEatingToTheLeft(BoardState boardState) throws IllegalCoordinateException {
         if (boardState.getTile(letterCoordinate - 1, digitCoordinate + getDigitModifier()).isOccupied()) {
             if (isPawnPinnedToKingDiagonally(boardState)) {
-                Tile kingTile = getKingTile(boardState);
-                int[] differenceBetweenPawnAndKing = boardState.getTiles().getDifferenceBetweenTiles(
-                        letterCoordinate, digitCoordinate,
-                        kingTile.getLetterCoordinate(), kingTile.getDigitCoordinate());
-                int[] differenceBetweenNewTileAndPawn = boardState.getTiles().getDifferenceBetweenTiles(
-                        letterCoordinate - 1, digitCoordinate + getDigitModifier(),
-                        letterCoordinate, digitCoordinate);
-                //диагональ справа снизу влево вверх (для белых фигур)
-                if ((differenceBetweenPawnAndKing[0] > 0 && differenceBetweenNewTileAndPawn[0] > 0
-                        && differenceBetweenPawnAndKing[1] < 0 && differenceBetweenNewTileAndPawn[1] < 0
-                        && color == Color.WHITE)
-                        //диагональ слева сверху вправо вниз (для чёрных фигур)
-                        || (differenceBetweenPawnAndKing[0] > 0 && differenceBetweenNewTileAndPawn[0] > 0
-                        && differenceBetweenPawnAndKing[1] > 0 && differenceBetweenNewTileAndPawn[1] > 0
-                        && color == Color.BLACK)
-                ) {
+                if (isPawnPinnedToKingDiagonallyFromBottomRightToTopLeftOrFromTopRightToBottomLeft(boardState)) {
                     potentialMoves.add(boardState.getTile(
                             letterCoordinate - 1, digitCoordinate + getDigitModifier()));
                 }
@@ -160,6 +146,52 @@ public class Pawn extends Piece {
                         letterCoordinate - 1, digitCoordinate + getDigitModifier()));
             }
         }
+    }
+
+    private int[] getDifferenceBetweenNewTileAndPawn(
+            BoardState boardState, int letterModifier
+    ) throws IllegalCoordinateException {
+
+        return boardState.getTiles().getDifferenceBetweenTiles(
+                letterCoordinate + letterModifier, digitCoordinate + getDigitModifier(),
+                letterCoordinate, digitCoordinate);
+    }
+
+    private int[] getDifferenceBetweenPawnAndKing(BoardState boardState) throws IllegalCoordinateException {
+        Tile kingTile = getKingTile(boardState);
+        return boardState.getTiles().getDifferenceBetweenTiles(
+                letterCoordinate, digitCoordinate,
+                kingTile.getLetterCoordinate(), kingTile.getDigitCoordinate());
+    }
+
+    private boolean isPawnPinnedToKingDiagonallyFromBottomLeftToTopRightOrFromTopLeftToBottomRight(
+            BoardState boardState
+    ) throws IllegalCoordinateException {
+        int[] differenceBetweenPawnAndKing = getDifferenceBetweenPawnAndKing(boardState);
+        int[] differenceBetweenNewTileAndPawn = getDifferenceBetweenNewTileAndPawn(boardState, 1);
+        //диагональ слева снизу вправо вверх (для белых фигур)
+        return (differenceBetweenPawnAndKing[0] < 0 && differenceBetweenNewTileAndPawn[0] < 0
+                && differenceBetweenPawnAndKing[1] < 0 && differenceBetweenNewTileAndPawn[1] < 0
+                && color == Color.WHITE)
+                //диагональ слева сверху вправо вниз (для чёрных фигур)
+                || (differenceBetweenPawnAndKing[0] < 0 && differenceBetweenNewTileAndPawn[0] < 0
+                && differenceBetweenPawnAndKing[1] > 0 && differenceBetweenNewTileAndPawn[1] > 0
+                && color == Color.BLACK);
+    }
+
+    private boolean isPawnPinnedToKingDiagonallyFromBottomRightToTopLeftOrFromTopRightToBottomLeft(
+            BoardState boardState
+    ) throws IllegalCoordinateException {
+        int[] differenceBetweenPawnAndKing = getDifferenceBetweenPawnAndKing(boardState);
+        int[] differenceBetweenNewTileAndPawn = getDifferenceBetweenNewTileAndPawn(boardState, -1);
+        //диагональ справа снизу влево вверх (для белых фигур)
+        return (differenceBetweenPawnAndKing[0] > 0 && differenceBetweenNewTileAndPawn[0] > 0
+                && differenceBetweenPawnAndKing[1] < 0 && differenceBetweenNewTileAndPawn[1] < 0
+                && color == Color.WHITE)
+                //диагональ справа сверху влево вниз (для чёрных фигур)
+                || (differenceBetweenPawnAndKing[0] > 0 && differenceBetweenNewTileAndPawn[0] > 0
+                && differenceBetweenPawnAndKing[1] > 0 && differenceBetweenNewTileAndPawn[1] > 0
+                && color == Color.BLACK);
     }
 
     private Tile getKingTile(BoardState boardState) {
@@ -172,7 +204,8 @@ public class Pawn extends Piece {
     }
 
     private void addEnPassantMove(BoardState boardState) throws IllegalCoordinateException {
-        if (!enPassantPossibleForThisPawn) {
+        if (!enPassantPossibleForThisPawn || isPawnPinnedToKingHorizontally(boardState)
+                || isPawnPinnedToKingVertically(boardState)) {
             return;
         }
         if (letterCoordinate >= 0 && letterCoordinate <= 7) {
@@ -181,6 +214,7 @@ public class Pawn extends Piece {
             } else if (letterCoordinate == 0) {
                 tryToAddEnPassantToPotentialMoves(boardState, 1);
             } else {
+
                 tryToAddEnPassantToPotentialMoves(boardState, 1);
                 tryToAddEnPassantToPotentialMoves(boardState, -1);
             }
